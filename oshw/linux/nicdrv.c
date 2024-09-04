@@ -95,6 +95,7 @@ int ecx_setupnic(ecx_portt *port, const char *ifname, int secondary)
    struct ifreq ifr;
    struct sockaddr_ll sll;
    int *psock;
+   int *ptxfd, *prxfd;
    pthread_mutexattr_t mutexattr;
 
    rval = 0;
@@ -141,32 +142,44 @@ int ecx_setupnic(ecx_portt *port, const char *ifname, int secondary)
       port->stack.rxsa        = &(port->rxsa);
       ecx_clear_rxbufstat(&(port->rxbufstat[0]));
       psock = &(port->sockhandle);
+      port->tx_handle = -1;
+      port->rx_handle = -1;
+      port->stack.tx_fd = &(port->tx_handle);
+      port->stack.rx_fd = &(port->rx_handle);
+      ptxfd = &(port->tx_handle);
+      prxfd = &(port->rx_handle);
    }
    /* we use RAW packet socket, with packet type ETH_P_ECAT */
-   *psock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ECAT));
+   // *psock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ECAT));
 
-   timeout.tv_sec =  0;
-   timeout.tv_usec = 1;
-   r = setsockopt(*psock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-   r = setsockopt(*psock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-   i = 1;
-   r = setsockopt(*psock, SOL_SOCKET, SO_DONTROUTE, &i, sizeof(i));
-   /* connect socket to NIC by name */
-   strcpy(ifr.ifr_name, ifname);
-   r = ioctl(*psock, SIOCGIFINDEX, &ifr);
-   ifindex = ifr.ifr_ifindex;
-   strcpy(ifr.ifr_name, ifname);
-   ifr.ifr_flags = 0;
-   /* reset flags of NIC interface */
-   r = ioctl(*psock, SIOCGIFFLAGS, &ifr);
-   /* set flags of NIC interface, here promiscuous and broadcast */
-   ifr.ifr_flags = ifr.ifr_flags | IFF_PROMISC | IFF_BROADCAST;
-   r = ioctl(*psock, SIOCSIFFLAGS, &ifr);
-   /* bind socket to protocol, in this case RAW EtherCAT */
-   sll.sll_family = AF_PACKET;
-   sll.sll_ifindex = ifindex;
-   sll.sll_protocol = htons(ETH_P_ECAT);
-   r = bind(*psock, (struct sockaddr *)&sll, sizeof(sll));
+   // timeout.tv_sec =  0;
+   // timeout.tv_usec = 1;
+   // r = setsockopt(*psock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+   // r = setsockopt(*psock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+   // i = 1;
+   // r = setsockopt(*psock, SOL_SOCKET, SO_DONTROUTE, &i, sizeof(i));
+   // /* connect socket to NIC by name */
+   // strcpy(ifr.ifr_name, ifname);
+   // r = ioctl(*psock, SIOCGIFINDEX, &ifr);
+   // ifindex = ifr.ifr_ifindex;
+   // strcpy(ifr.ifr_name, ifname);
+   // ifr.ifr_flags = 0;
+   // /* reset flags of NIC interface */
+   // r = ioctl(*psock, SIOCGIFFLAGS, &ifr);
+   // /* set flags of NIC interface, here promiscuous and broadcast */
+   // ifr.ifr_flags = ifr.ifr_flags | IFF_PROMISC | IFF_BROADCAST;
+   // r = ioctl(*psock, SIOCSIFFLAGS, &ifr);
+   // /* bind socket to protocol, in this case RAW EtherCAT */
+   // sll.sll_family = AF_PACKET;
+   // sll.sll_ifindex = ifindex;
+   // sll.sll_protocol = htons(ETH_P_ECAT);
+   // r = bind(*psock, (struct sockaddr *)&sll, sizeof(sll));
+
+   // open fds to tx and rx fifos
+   r = 0;
+   *ptxfd = open("/proc/xenomai/registry/rtipc/xddp/ecat_xmit", O_WRONLY);
+   *prxfd = open("/proc/xenomai/registry/rtipc/xddp/ecat_recv", O_RDONLY | O_NONBLOCK);
+
    /* setup ethernet headers in tx buffers so we don't have to repeat it */
    for (i = 0; i < EC_MAXBUF; i++)
    {
@@ -185,10 +198,16 @@ int ecx_setupnic(ecx_portt *port, const char *ifname, int secondary)
  */
 int ecx_closenic(ecx_portt *port)
 {
-   if (port->sockhandle >= 0)
-      close(port->sockhandle);
-   if ((port->redport) && (port->redport->sockhandle >= 0))
-      close(port->redport->sockhandle);
+   // if (port->sockhandle >= 0)
+   //    close(port->sockhandle);
+   // if ((port->redport) && (port->redport->sockhandle >= 0))
+   //    close(port->redport->sockhandle);
+
+   // close fds to tx and rx fifos
+   if (port->tx_handle >= 0)
+      close(port->tx_handle);
+   if (port->rx_handle >= 0)
+      close(port->rx_handle);
 
    return 0;
 }

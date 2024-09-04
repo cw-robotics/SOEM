@@ -35,6 +35,8 @@ typedef struct
    int         (*rxbufstat)[EC_MAXBUF];
    /** received MAC source address (middle word) */
    int         (*rxsa)[EC_MAXBUF];
+   int         *tx_fd;
+   int         *rx_fd;
 } ec_stackT;
 
 /** pointer structure to buffers for redundant port */
@@ -84,6 +86,8 @@ typedef struct
    pthread_mutex_t getindex_mutex;
    pthread_mutex_t tx_mutex;
    pthread_mutex_t rx_mutex;
+   int tx_handle;
+   int rx_handle;
 } ecx_portt;
 
 extern const uint16 priMAC[3];
