@@ -47,6 +47,8 @@
 #include "oshw.h"
 #include "osal.h"
 
+#include "errno.h"
+
 /** Redundancy modes */
 enum
 {
@@ -150,7 +152,13 @@ int ecx_setupnic(ecx_portt *port, const char *ifname, int secondary)
    // open fds to tx and rx fifos
    r = 0;
    *ptxfd = open("/proc/xenomai/registry/rtipc/xddp/ecat_xmit", O_WRONLY);
+   if (*ptxfd < 0) {
+      printf("SOEM: Failed to open tx fifo: %s\n", strerror(errno));
+   }
    *prxfd = open("/proc/xenomai/registry/rtipc/xddp/ecat_recv", O_RDONLY | O_NONBLOCK);
+   if (*prxfd < 0) {
+      printf("SOEM: Failed to open rx fifo: %s\n", strerror(errno));
+   }
 
    /* setup ethernet headers in tx buffers so we don't have to repeat it */
    for (i = 0; i < EC_MAXBUF; i++)
