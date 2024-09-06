@@ -268,7 +268,7 @@ int ecx_outframe(ecx_portt *port, uint8 idx, int stacknumber)
    }
    lp = (*stack->txbuflength)[idx];
    (*stack->rxbufstat)[idx] = EC_BUF_TX;
-   rval = send(*stack->sock, (*stack->txbuf)[idx], lp, 0);
+   rval = write(*stack->tx_fd, (*stack->txbuf)[idx], lp);
    if (rval == -1)
    {
       (*stack->rxbufstat)[idx] = EC_BUF_EMPTY;
@@ -284,7 +284,6 @@ int ecx_outframe(ecx_portt *port, uint8 idx, int stacknumber)
  */
 int ecx_outframe_red(ecx_portt *port, uint8 idx)
 {
-   ec_comt *datagramP;
    ec_etherheadert *ehp;
    int rval;
 
@@ -293,25 +292,6 @@ int ecx_outframe_red(ecx_portt *port, uint8 idx)
    ehp->sa1 = htons(priMAC[1]);
    /* transmit over primary socket*/
    rval = ecx_outframe(port, idx, 0);
-   if (port->redstate != ECT_RED_NONE)
-   {
-      pthread_mutex_lock( &(port->tx_mutex) );
-      ehp = (ec_etherheadert *)&(port->txbuf2);
-      /* use dummy frame for secondary socket transmit (BRD) */
-      datagramP = (ec_comt*)&(port->txbuf2[ETH_HEADERSIZE]);
-      /* write index to frame */
-      datagramP->index = idx;
-      /* rewrite MAC source address 1 to secondary */
-      ehp->sa1 = htons(secMAC[1]);
-      /* transmit over secondary socket */
-      port->redport->rxbufstat[idx] = EC_BUF_TX;
-      if (send(port->redport->sockhandle, &(port->txbuf2), port->txbuflength2 , 0) == -1)
-      {
-         port->redport->rxbufstat[idx] = EC_BUF_EMPTY;
-      }
-      pthread_mutex_unlock( &(port->tx_mutex) );
-   }
-
    return rval;
 }
 
@@ -334,7 +314,7 @@ static int ecx_recvpkt(ecx_portt *port, int stacknumber)
       stack = &(port->redport->stack);
    }
    lp = sizeof(port->tempinbuf);
-   bytesrx = recv(*stack->sock, (*stack->tempbuf), lp, 0);
+   bytesrx = read(*stack->rx_fd, (*stack->tempbuf), lp);
    port->tempinbufs = bytesrx;
 
    return (bytesrx > 0);
