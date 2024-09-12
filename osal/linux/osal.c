@@ -67,6 +67,7 @@ void osal_timer_start(osal_timert * self, uint32 timeout_usec)
    struct timeval stop_time;
 
    osal_getrelativetime(&start_time);
+   timeout_usec += 16000;
    timeout.tv_sec = timeout_usec / USECS_PER_SEC;
    timeout.tv_usec = timeout_usec % USECS_PER_SEC;
    timeradd(&start_time, &timeout, &stop_time);

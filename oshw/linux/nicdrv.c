@@ -402,7 +402,7 @@ int ecx_inframe(ecx_portt *port, uint8 idx, int stacknumber)
             else
             {
                /* check if index exist and someone is waiting for it */
-               if (idxf < EC_MAXBUF && (*stack->rxbufstat)[idxf] == EC_BUF_TX)
+               if (idxf < EC_MAXBUF)
                {
                   rxbuf = &(*stack->rxbuf)[idxf];
                   /* put it in the buffer array (strip ethernet header) */
